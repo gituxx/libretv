@@ -14,6 +14,18 @@ PROTECTED = [
     'package-lock.json',
     'src/lib/ssrf.ts',
     'src/lib/source-list.ts',
+    'src/lib/auth.ts',
+    'src/lib/api-guard.ts',
+    'src/app/api/auth/route.ts',
+    'src/app/api/status/route.ts',
+    'src/app/api/search/route.ts',
+    'src/app/api/search/route.test.ts',
+    'src/app/page.tsx',
+    'src/components/auth.tsx',
+    'src/components/source-manager.tsx',
+    'src/components/settings-shared.tsx',
+    'src/lib/store.ts',
+    'src/lib/store.test.ts',
     'src/lib/tvbox-parser.test.ts',
 ]
 

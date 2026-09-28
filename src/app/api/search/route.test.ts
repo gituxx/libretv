@@ -2,6 +2,14 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { POST } from './route';
 import { SESSION_COOKIE, signSession } from '@/lib/auth';
 
+// Search tests use .example domains; avoid real DNS lookups in SSRF checks.
+vi.mock('node:dns/promises', () => ({
+  default: {
+    resolve4: vi.fn(async () => ['8.8.8.8']),
+    resolve6: vi.fn(async () => []),
+  },
+}));
+
 /**
  * 聚合搜索接口单测：跨源聚合、同源去重、精确命中置顶、成人内容过滤、
  * 失败源不影响整体、SSRF 字面量拒绝。上游一律 mock fetch，无真实网络。

@@ -20,6 +20,11 @@ export function isPasswordConfigured(): boolean {
   return getPassword().length > 0;
 }
 
+/** Explicit public deployment mode; an old PASSWORD secret must not lock visitors out. */
+export function isPublicAccess(): boolean {
+  return process.env.PUBLIC_ACCESS === 'true';
+}
+
 function getSecret(): string {
   if (process.env.PROXY_SECRET) return process.env.PROXY_SECRET;
   return crypto.createHash('sha256').update(getPassword() + ':libretv::session-salt').digest('hex');

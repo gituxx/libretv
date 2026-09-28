@@ -207,13 +207,12 @@ function TabRow<T extends string>({
 
 // —— 点播源面板 ——
 
-type VodFilter = 'all' | 'enabled' | 'disabled' | 'sub' | 'manual';
+type VodFilter = 'all' | 'enabled' | 'sub' | 'manual';
 
 // 与直播源面板保持同一组筛选项与顺序：先状态（已启用 / 已停用），后来源（来自订阅 / 手动添加）
 const VOD_FILTERS: { id: VodFilter; label: string }[] = [
   { id: 'all', label: '全部' },
   { id: 'enabled', label: '已启用' },
-  { id: 'disabled', label: '已停用' },
   { id: 'sub', label: '来自订阅' },
   { id: 'manual', label: '手动添加' },
 ];
@@ -236,12 +235,18 @@ function VodSourcesPanel() {
       const fromSub = s.key.startsWith('sub_');
       // 已启用 = 勾选中且当前未被自动停用（即真正在参与搜索的源）
       if (filter === 'enabled' && !(store.selectedKeys.includes(s.key) && !isSourceDisabled(store, s.key))) return false;
-      if (filter === 'disabled' && !isSourceDisabled(store, s.key)) return false;
       if (filter === 'sub' && !fromSub) return false;
       // 手动添加 = 既非订阅导入、也非部署者预置
       if (filter === 'manual' && (fromSub || envKeys.has(s.key))) return false;
       if (!q) return true;
       return s.name.toLowerCase().includes(q) || s.url.toLowerCase().includes(q);
+    }).sort((a, b) => {
+      const ah = store.sourceHealth[a.key];
+      const bh = store.sourceHealth[b.key];
+      const latency = (h: typeof ah) => h?.ok && typeof h.ms === 'number' ? h.ms : Number.POSITIVE_INFINITY;
+      const aMs = latency(ah);
+      const bMs = latency(bh);
+      return aMs === bMs ? 0 : aMs - bMs;
     });
   }, [all, query, filter, store, envKeys]);
 
@@ -268,14 +273,6 @@ function VodSourcesPanel() {
     const result = await probe(filtered.map((s) => ({ key: s.key, url: s.url })));
     if (!result) return; // 被取消则无汇总
     toast(`测活完成：${result.ok}/${result.total} 个可用`, result.ok === result.total ? 'success' : 'info');
-  };
-
-  /** 一键恢复被自动停用的源（仅「已停用」筛选下提供） */
-  const restoreAll = () => {
-    const keys = filtered.filter((s) => isSourceDisabled(store, s.key)).map((s) => s.key);
-    if (keys.length === 0) return;
-    keys.forEach((k) => useAppStore.getState().clearSourceHealth(k));
-    toast(`已恢复 ${keys.length} 个源`, 'success');
   };
 
   const empty = store.envSources.length === 0 && store.customAPIs.length === 0;
@@ -344,12 +341,6 @@ function VodSourcesPanel() {
               >
                 {isProbing ? '取消测活' : '批量测活'}
               </button>
-              {/* 查看「已停用」时提供一键恢复，省去逐个点击 */}
-              {filter === 'disabled' && (
-                <button className="btn-ghost btn-sm" onClick={restoreAll} disabled={filtered.length === 0}>
-                  全部恢复
-                </button>
-              )}
             </div>
             {progress && (
               <div className="flex items-center gap-2 text-[11px] text-muted">
