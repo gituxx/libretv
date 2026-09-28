@@ -17,6 +17,11 @@ export class ApiError extends Error {
 
 const UNAUTHORIZED_EVENT = 'libretv:unauthorized';
 
+// Workers Free permits 50 external subrequests per invocation. CMS endpoints
+// may redirect or fetch extra search pages, so each invocation gets only six.
+const SEARCH_BATCH_SIZE = 6;
+const SEARCH_BATCH_CONCURRENCY = 3;
+
 /** 单条测活结果（/api/live/probe，JSON 与 NDJSON 流共用同一结构） */
 export interface LiveProbeResult {
   url: string;
@@ -130,15 +135,44 @@ export const api = {
   ): Promise<SearchResponse> => {
     const signal = opts?.signal;
     const onSource = opts?.onSource;
-    if (!onSource) {
-      return request<SearchResponse>('/api/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wd, sources, filterAdult }),
-        signal,
-      });
+    const batches: SourceConfig[][] = [];
+    for (let i = 0; i < sources.length; i += SEARCH_BATCH_SIZE) {
+      batches.push(sources.slice(i, i + SEARCH_BATCH_SIZE));
     }
-    return searchStream(wd, sources, filterAdult, onSource, signal);
+    const responses: SearchResponse[] = new Array(batches.length);
+    let nextBatch = 0;
+    const worker = async () => {
+      while (nextBatch < batches.length) {
+        const i = nextBatch++;
+        const batch = batches[i];
+        try {
+          responses[i] = onSource
+            ? await searchStream(wd, batch, filterAdult, onSource, signal)
+            : await request<SearchResponse>('/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wd, sources: batch, filterAdult }),
+                signal,
+              });
+        } catch (error) {
+          if (signal?.aborted || (error instanceof ApiError && [401, 503].includes(error.status))) throw error;
+          const message = error instanceof Error ? error.message : '请求失败';
+          responses[i] = { list: [], failures: batch.map((s) => ({ sourceKey: s.key, error: message })) };
+          for (const source of batch) {
+            onSource?.({ sourceKey: source.key, ok: false, list: [], error: message });
+          }
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(SEARCH_BATCH_CONCURRENCY, batches.length) }, worker));
+    const seen = new Set<string>();
+    const list = responses.flatMap((r) => r.list).filter((item) => {
+      const key = `${item.sourceKey}_${item.vodId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return { list, failures: responses.flatMap((r) => r.failures) };
   },
 
   detail: (id: string, source: SourceConfig, signal?: AbortSignal) => {

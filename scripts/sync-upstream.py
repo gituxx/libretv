@@ -16,6 +16,8 @@ PROTECTED = [
     'src/lib/source-list.ts',
     'src/lib/auth.ts',
     'src/lib/api-guard.ts',
+    'src/lib/client-api.ts',
+    'src/lib/client-api.test.ts',
     'src/app/api/auth/route.ts',
     'src/app/api/status/route.ts',
     'src/app/api/search/route.ts',

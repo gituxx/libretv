@@ -84,7 +84,7 @@ function HomeContent() {
   );
 
   const searchQuery = useQuery({
-    queryKey: ['search', urlQuery, selectedKeys, yellowFilter],
+    queryKey: ['search', urlQuery, selectedKeys, selectedSources.map((s) => s.url), yellowFilter],
     // 与 runSearch 的截断规则保持一致：顶栏搜索 / 手动构造长链接不会绕过上限
     queryFn: ({ signal }) => {
       setStreamedOutcomes([]);

@@ -25,11 +25,11 @@ function searchCacheKey(wd: string, sources: SourceConfig[], filterAdult: boolea
 /**
  * 每个源最多抓取的页数（参考 LunaTV 的 SearchDownstreamMaxPage）。
  * 第一页响应会带回 pagecount（源站真实总页数），实际抓取页数 = min(pagecount, 该值)。
- * 默认 5；页与页之间并行请求，单页失败只丢弃该页。
+ * 默认只查第一页，让一次 Worker 调用留在免费套餐的子请求额度内。
  */
 const SEARCH_MAX_PAGES = (() => {
-  const n = parseInt(process.env.SEARCH_MAX_PAGES || '5', 10);
-  if (!Number.isFinite(n)) return 5;
+  const n = parseInt(process.env.SEARCH_MAX_PAGES || '1', 10);
+  if (!Number.isFinite(n)) return 1;
   return Math.min(50, Math.max(1, n));
 })();
 
