@@ -151,7 +151,7 @@ describe('parseTvboxPayload', () => {
 
     expect(result.sources).toHaveLength(MAX_VOD_SOURCES);
     expect(result.liveSources).toHaveLength(MAX_LIVE_SOURCES);
-    // 前段重复只占 1 个名额：1 + 99 达到上限，余下 6 个点播与 3 个直播被截断
+    // 前段重复只占 1 个名额；超出上限的 6 个点播与 3 个直播被截断。
     expect(result.stats?.truncated).toBe(9);
   });
 

@@ -13,6 +13,8 @@ PROTECTED = [
     'package.json',
     'package-lock.json',
     'src/lib/ssrf.ts',
+    'src/lib/source-list.ts',
+    'src/lib/tvbox-parser.test.ts',
 ]
 
 

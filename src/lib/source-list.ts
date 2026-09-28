@@ -10,7 +10,7 @@ import type { SourceListPayload } from './types';
  * 3. 纯直播订阅：只有 liveSources
  */
 
-export const MAX_VOD_SOURCES = 100;
+export const MAX_VOD_SOURCES = 200;
 export const MAX_LIVE_SOURCES = 50;
 
 /**
