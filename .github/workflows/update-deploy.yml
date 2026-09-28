@@ -44,7 +44,8 @@ jobs:
           COOKIE_SECURE: 'true'
       - name: Publish upstream merge
         if: github.event_name != 'push'
-        run: git push
+        run: |
+          if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then git push; fi
       - name: Deploy Cloudflare Worker
         run: npx opennextjs-cloudflare deploy
         env:
