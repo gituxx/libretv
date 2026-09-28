@@ -1,0 +1,56 @@
+name: Update LibreTV and deploy
+on:
+  schedule:
+    - cron: '30 18 * * *' # 02:30 China time, after the TVBox refresh
+  workflow_dispatch:
+  push:
+    branches: [main]
+concurrency:
+  group: libretv-update-deploy
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Configure Git identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Merge original LibreTV updates
+        if: github.event_name != 'push'
+        run: python scripts/sync-upstream.py
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Test TVBox subscription integration
+        run: npx vitest run src/lib/tvbox-parser.test.ts src/lib/subscription-sync.test.ts src/app/api/source-list/route.test.ts
+      - name: Build Cloudflare Worker
+        run: npx opennextjs-cloudflare build
+        env:
+          DEFAULT_SUBSCRIPTIONS: '["https://tvbox.oinnn.top/tvbox.json"]'
+          DEFAULT_LIVE_SOURCES: '[{"name":"每日直播源","url":"https://tvbox.oinnn.top/live.m3u"}]'
+          COOKIE_SECURE: 'true'
+      - name: Publish upstream merge
+        if: github.event_name != 'push'
+        run: git push
+      - name: Deploy Cloudflare Worker
+        run: npx opennextjs-cloudflare deploy
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Verify site and subscription
+        run: |
+          curl --fail --retry-all-errors --retry 8 --retry-delay 5 https://libretv.oinnn.top/ -o /dev/null
+          curl --fail --retry-all-errors --retry 4 --retry-delay 5 https://tvbox.oinnn.top/tvbox.json -o /dev/null

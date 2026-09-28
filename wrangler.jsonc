@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "libretv",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-29",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "libretv" }],
+  "routes": [{ "pattern": "libretv.oinnn.top", "custom_domain": true }],
+  "vars": {
+    "DEFAULT_SUBSCRIPTIONS": "[\"https://tvbox.oinnn.top/tvbox.json\"]",
+    "DEFAULT_LIVE_SOURCES": "[{\"name\":\"每日直播源\",\"url\":\"https://tvbox.oinnn.top/live.m3u\"}]",
+    "COOKIE_SECURE": "true"
+  }
+}

@@ -59,8 +59,11 @@ export async function isBlockedByDNS(urlString: string): Promise<boolean> {
     if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) || hostname.includes(':')) {
       return isPrivateIP(hostname);
     }
-    const result = await dns.lookup(hostname, { all: true });
-    return result.some((r) => isPrivateIP(r.address));
+    // Cloudflare Workers supports resolve4/resolve6, but not dns.lookup.
+    const results = await Promise.allSettled([dns.resolve4(hostname), dns.resolve6(hostname)]);
+    return results.some((result) =>
+      result.status === 'fulfilled' && result.value.some((address) => isPrivateIP(address))
+    );
   } catch {
     return false; // 解析失败不阻断，交给后续请求处理
   }
