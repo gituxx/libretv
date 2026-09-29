@@ -34,8 +34,8 @@ jobs:
         run: python scripts/sync-upstream.py
       - run: npm ci
       - run: npm run typecheck
-      - name: Test TVBox subscription integration
-        run: npx vitest run src/lib/tvbox-parser.test.ts src/lib/subscription-sync.test.ts src/app/api/source-list/route.test.ts
+      - name: Test subscription and incremental search
+        run: npx vitest run src/lib/tvbox-parser.test.ts src/lib/subscription-sync.test.ts src/app/api/source-list/route.test.ts src/components/video-card.test.ts src/lib/client-api.test.ts src/app/api/search/route.test.ts
       - name: Build Cloudflare Worker
         run: npx opennextjs-cloudflare build
         env:
