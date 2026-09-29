@@ -146,14 +146,43 @@ export const api = {
         const i = nextBatch++;
         const batch = batches[i];
         try {
-          responses[i] = onSource
-            ? await searchStream(wd, batch, filterAdult, onSource, signal)
-            : await request<SearchResponse>('/api/search', {
+          if (onSource) {
+            try {
+              responses[i] = await searchStream(wd, batch, filterAdult, onSource, signal);
+            } catch (streamError) {
+              // 部分浏览器或内嵌 WebView 不支持 fetch response.body 流读取；
+              // 流中断时回退普通 JSON 请求，避免整批源被误报为搜索失败。
+              if (
+                signal?.aborted ||
+                (streamError instanceof ApiError && [401, 503].includes(streamError.status))
+              ) throw streamError;
+              const response = await request<SearchResponse>('/api/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ wd, sources: batch, filterAdult }),
                 signal,
               });
+              responses[i] = response;
+              const failureByKey = new Map(response.failures.map((failure) => [failure.sourceKey, failure]));
+              for (const source of batch) {
+                const failure = failureByKey.get(source.key);
+                onSource({
+                  sourceKey: source.key,
+                  ok: !failure,
+                  list: response.list.filter((item) => item.sourceKey === source.key),
+                  error: failure?.error,
+                  timedOut: failure?.timedOut,
+                });
+              }
+            }
+          } else {
+            responses[i] = await request<SearchResponse>('/api/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ wd, sources: batch, filterAdult }),
+              signal,
+            });
+          }
         } catch (error) {
           if (signal?.aborted || (error instanceof ApiError && [401, 503].includes(error.status))) throw error;
           const message = error instanceof Error ? error.message : '请求失败';

@@ -92,7 +92,13 @@ function HomeContent() {
         signal,
         // 逐源结算即更新：结果边搜边渲染，同时滚动健康度
         onSource: (outcome) => {
-          setStreamedOutcomes((prev) => [...prev, outcome]);
+          setStreamedOutcomes((prev) => {
+            const existingIndex = prev.findIndex((item) => item.sourceKey === outcome.sourceKey);
+            if (existingIndex < 0) return [...prev, outcome];
+            const next = [...prev];
+            next[existingIndex] = outcome;
+            return next;
+          });
           useAppStore.getState().recordSourceHealth([outcome]);
         },
       });
