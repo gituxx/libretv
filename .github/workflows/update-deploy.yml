@@ -35,7 +35,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - name: Test subscription and incremental search
-        run: npx vitest run src/lib/tvbox-parser.test.ts src/lib/subscription-sync.test.ts src/app/api/source-list/route.test.ts src/components/video-card.test.ts src/lib/client-api.test.ts src/app/api/search/route.test.ts
+        run: npx vitest run src/lib/tvbox-parser.test.ts src/lib/subscription-sync.test.ts src/app/api/source-list/route.test.ts src/components/video-card.test.ts src/components/switch-source.test.ts src/lib/client-api.test.ts src/app/api/search/route.test.ts
       - name: Build Cloudflare Worker
         run: npx opennextjs-cloudflare build
         env:

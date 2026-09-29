@@ -16,7 +16,7 @@ const PlayerShell = dynamic(() => import('@/components/player-shell').then((m) =
   ),
 });
 import { EmptyState, LoadingState, Spinner } from '@/components/states';
-import { SwitchSourceModal } from '@/components/switch-source';
+import { SwitchSourceModal, useSwitchSourceProbe } from '@/components/switch-source';
 import { useToast } from '@/components/toast';
 import { enqueueDownload } from '@/components/download-manager';
 import { Icon } from '@/components/icon';
@@ -90,6 +90,16 @@ function WatchContent() {
     if (episodes.length > 0) return Math.min(Math.max(indexParam, 0), episodes.length - 1);
     return indexParam;
   }, [episodes, indexParam]);
+
+  // 播放开始后就在后台准备换源结果，面板打开时直接显示已完成的检测。
+  const switchProbe = useSwitchSourceProbe({
+    currentTitle: videoTitle,
+    currentSource: source,
+    currentVodId: vodId,
+    currentEpisodes: episodes.length,
+    currentCover: detailQuery.data?.videoInfo?.cover,
+    enabled: verified && Boolean(currentUrl && vodId),
+  });
 
   const goEpisode = useCallback(
     (index: number) => {
@@ -342,6 +352,8 @@ function WatchContent() {
           currentSourceKey={sourceKey}
           currentVodId={vodId}
           currentIndex={currentIndex}
+          candidates={switchProbe.candidates}
+          progress={switchProbe.progress}
           onClose={() => setSwitchOpen(false)}
         />
       )}
