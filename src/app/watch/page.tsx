@@ -60,6 +60,7 @@ function WatchContent() {
   const indexParam = parseInt(searchParams.get('index') || '0', 10) || 0;
 
   const [reversed, setReversed] = useState(false);
+  const [episodePage, setEpisodePage] = useState(0);
   const [switchOpen, setSwitchOpen] = useState(false);
 
   const source = resolveSource(store, sourceKey, {
@@ -189,7 +190,27 @@ function WatchContent() {
     return () => document.removeEventListener('keydown', handler);
   }, [currentIndex, episodes.length, goEpisode]);
 
-  const orderedEpisodes = reversed ? [...episodes].map((_, i) => episodes.length - 1 - i) : episodes.map((_, i) => i);
+  const orderedEpisodes = useMemo(
+    () => reversed ? [...episodes].map((_, i) => episodes.length - 1 - i) : episodes.map((_, i) => i),
+    [episodes, reversed]
+  );
+  const episodePageRanges = useMemo(() => {
+    const ranges: { start: number; label: string }[] = [];
+    for (let start = 0; start < orderedEpisodes.length; start += 20) {
+      const rangeEpisodes = orderedEpisodes.slice(start, start + 20);
+      ranges.push({
+        start,
+        label: `${rangeEpisodes[0] + 1}-${rangeEpisodes[rangeEpisodes.length - 1] + 1}`,
+      });
+    }
+    return ranges;
+  }, [orderedEpisodes]);
+  const visibleEpisodes = orderedEpisodes.slice(episodePage * 20, episodePage * 20 + 20);
+
+  useEffect(() => {
+    const displayIndex = orderedEpisodes.indexOf(currentIndex);
+    setEpisodePage(displayIndex < 0 ? 0 : Math.floor(displayIndex / 20));
+  }, [currentIndex, orderedEpisodes]);
 
   if (!verified) {
     return (
@@ -290,8 +311,22 @@ function WatchContent() {
               >
                 下载本集
               </button>
-              <button className="btn-source btn-sm" onClick={() => setSwitchOpen(true)}>
-                切换资源
+              <button
+                className={cn('btn-sm', isFavorite ? 'btn-source' : 'btn-ghost')}
+                disabled={!vodId}
+                onClick={async () => {
+                  const added = await toggleFavorite({
+                    sourceKey,
+                    sourceUrl: source.url,
+                    vodId,
+                    title: videoTitle,
+                    pic: detailQuery.data?.videoInfo?.cover,
+                  });
+                  toast(added ? '已加入收藏' : '已取消收藏', 'success');
+                }}
+                aria-pressed={Boolean(isFavorite)}
+              >
+                <span aria-hidden>{isFavorite ? '★' : '☆'}</span> {isFavorite ? '已收藏' : '收藏'}
               </button>
               <label className="flex items-center gap-1.5 text-xs text-muted ml-auto cursor-pointer">
                 <input
@@ -312,22 +347,39 @@ function WatchContent() {
               <h2 className="text-sm font-semibold text-content">
                 剧集列表{episodes.length > 0 && `（${episodes.length}）`}
               </h2>
-              {/* 排列开关紧贴它所作用的列表：放在这里才看得出它管的是这一栏的顺序 */}
-              {episodes.length > 1 && (
-                <button
-                  className="btn-ghost btn-sm shrink-0"
-                  onClick={() => setReversed((v) => !v)}
-                  aria-label={reversed ? '切换为正序排列' : '切换为倒序排列'}
-                  title="调整剧集列表的排列顺序"
-                >
-                  <Icon
-                    name="arrowDown"
-                    className={cn('w-3.5 h-3.5 transition-transform', reversed && 'rotate-180')}
-                  />
-                  {reversed ? '正序排列' : '倒序排列'}
-                </button>
-              )}
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button className="btn-source btn-sm" onClick={() => setSwitchOpen(true)}>切换资源</button>
+                {episodes.length > 1 && (
+                  <button
+                    className="btn-ghost btn-sm"
+                    onClick={() => setReversed((v) => !v)}
+                    aria-label={reversed ? '切换为正序排列' : '切换为倒序排列'}
+                    title="调整剧集列表的排列顺序"
+                  >
+                    <Icon
+                      name="arrowDown"
+                      className={cn('w-3.5 h-3.5 transition-transform', reversed && 'rotate-180')}
+                    />
+                    {reversed ? '正序' : '倒序'}
+                  </button>
+                )}
+              </div>
             </div>
+            {episodePageRanges.length > 1 && (
+              <label className="mb-2 flex items-center gap-2 text-xs text-muted">
+                <span className="shrink-0">剧集范围</span>
+                <select
+                  className="input h-8 min-w-0 flex-1 py-1 text-xs"
+                  value={episodePageRanges[episodePage]?.start ?? 0}
+                  onChange={(event) => setEpisodePage(Number(event.target.value) / 20)}
+                  aria-label="选择剧集范围"
+                >
+                  {episodePageRanges.map((range) => (
+                    <option key={range.start} value={range.start}>{range.label} 集</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {episodes.length === 0 ? (
               detailQuery.isLoading ? (
                 <LoadingState />
@@ -335,8 +387,8 @@ function WatchContent() {
                 <EmptyState variant="plain" title={detailQuery.isError ? '获取剧集失败' : '暂无剧集信息'} />
               )
             ) : (
-              <div className="grid grid-cols-5 lg:grid-cols-4 gap-1.5 max-h-[65vh] overflow-y-auto scrollbar-thin pr-1">
-                {orderedEpisodes.map((realIndex) => (
+              <div className="grid grid-cols-5 lg:grid-cols-4 gap-1.5">
+                {visibleEpisodes.map((realIndex) => (
                   <EpisodeButton
                     key={realIndex}
                     index={realIndex}
@@ -359,22 +411,6 @@ function WatchContent() {
                         .filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <button
-                    className={cn('btn-sm shrink-0', isFavorite ? 'btn-source' : 'btn-ghost')}
-                    onClick={async () => {
-                      const added = await toggleFavorite({
-                        sourceKey,
-                        sourceUrl: source.url,
-                        vodId,
-                        title: videoTitle,
-                        pic: detailQuery.data?.videoInfo?.cover,
-                      });
-                      toast(added ? '已加入收藏' : '已取消收藏', 'success');
-                    }}
-                    aria-pressed={Boolean(isFavorite)}
-                  >
-                    <span aria-hidden>{isFavorite ? '★' : '☆'}</span> {isFavorite ? '已收藏' : '收藏'}
-                  </button>
                 </div>
                 {detailQuery.data.videoInfo.desc && (
                   <p className="mt-3 text-sm leading-6 text-muted whitespace-pre-line break-words">
