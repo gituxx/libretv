@@ -304,40 +304,6 @@ function WatchContent() {
               </label>
             </div>
 
-            {detailQuery.data?.videoInfo && (
-              <section className="mt-4 rounded-lg border border-line bg-surface-raised p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="text-base font-semibold text-content">{detailQuery.data.videoInfo.title || videoTitle}</h2>
-                    <p className="mt-1 text-xs text-muted">
-                      {[detailQuery.data.videoInfo.year, detailQuery.data.videoInfo.area, detailQuery.data.videoInfo.typeName, detailQuery.data.videoInfo.director]
-                        .filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <button
-                    className={cn('btn-sm shrink-0', isFavorite ? 'btn-source' : 'btn-ghost')}
-                    onClick={async () => {
-                      const added = await toggleFavorite({
-                        sourceKey,
-                        sourceUrl: source.url,
-                        vodId,
-                        title: videoTitle,
-                        pic: detailQuery.data?.videoInfo?.cover,
-                      });
-                      toast(added ? '已加入收藏' : '已取消收藏', 'success');
-                    }}
-                    aria-pressed={Boolean(isFavorite)}
-                  >
-                    <span aria-hidden>{isFavorite ? '★' : '☆'}</span> {isFavorite ? '已收藏' : '收藏'}
-                  </button>
-                </div>
-                {detailQuery.data.videoInfo.desc && (
-                  <p className="mt-3 text-sm leading-6 text-muted whitespace-pre-line break-words">
-                    {detailQuery.data.videoInfo.desc}
-                  </p>
-                )}
-              </section>
-            )}
           </div>
 
           {/* 剧集侧栏 */}
@@ -383,6 +349,40 @@ function WatchContent() {
             <p className="hidden md:block text-[10px] text-faint mt-3 leading-relaxed">
               快捷键：空格 播放/暂停 · ←/→ 快退/快进 5s · ↑/↓ 音量 · F 全屏 · Alt+←/→ 切换集数
             </p>
+            {detailQuery.data?.videoInfo && (
+              <section className="mt-4 rounded-lg border border-line bg-surface p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-content">{detailQuery.data.videoInfo.title || videoTitle}</h2>
+                    <p className="mt-1 text-xs text-muted">
+                      {[detailQuery.data.videoInfo.year, detailQuery.data.videoInfo.area, detailQuery.data.videoInfo.typeName, detailQuery.data.videoInfo.director]
+                        .filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <button
+                    className={cn('btn-sm shrink-0', isFavorite ? 'btn-source' : 'btn-ghost')}
+                    onClick={async () => {
+                      const added = await toggleFavorite({
+                        sourceKey,
+                        sourceUrl: source.url,
+                        vodId,
+                        title: videoTitle,
+                        pic: detailQuery.data?.videoInfo?.cover,
+                      });
+                      toast(added ? '已加入收藏' : '已取消收藏', 'success');
+                    }}
+                    aria-pressed={Boolean(isFavorite)}
+                  >
+                    <span aria-hidden>{isFavorite ? '★' : '☆'}</span> {isFavorite ? '已收藏' : '收藏'}
+                  </button>
+                </div>
+                {detailQuery.data.videoInfo.desc && (
+                  <p className="mt-3 text-sm leading-6 text-muted whitespace-pre-line break-words">
+                    {detailQuery.data.videoInfo.desc}
+                  </p>
+                )}
+              </section>
+            )}
           </aside>
         </div>
       </main>
