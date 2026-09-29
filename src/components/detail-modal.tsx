@@ -184,7 +184,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
                     </div>
                   )}
                   {info?.desc && (
-                    <p className="text-sm text-muted leading-relaxed line-clamp-3">{info.desc}</p>
+                    <p className="text-sm text-muted leading-relaxed whitespace-pre-line break-words">{info.desc}</p>
                   )}
                 </div>
               </div>

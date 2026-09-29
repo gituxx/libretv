@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cleanDescription,
   extractEpisodesFromPlayUrl,
   extractM3u8FromText,
   filterAdultResults,
@@ -108,6 +109,13 @@ describe('parseDetail', () => {
     const data = { list: [{ vod_name: 'X', vod_content: '$https://cdn/fall.m3u8' }] };
     const detail = parseDetail(data, source);
     expect(detail.episodes).toEqual(['https://cdn/fall.m3u8']);
+  });
+
+  it('把 HTML 简介转成有段落的纯文本', () => {
+    const content = '<p>第一段<br/>第二行&nbsp;&amp; 更多</p><p>第三段&#x3002;</p><script>广告</script>';
+    expect(cleanDescription(content)).toBe('第一段\n第二行 & 更多\n第三段。');
+    const data = { list: [{ vod_name: '兰香如故', vod_content: content, vod_play_url: '1$https://cdn/1.m3u8' }] };
+    expect(parseDetail(data, source).videoInfo.desc).toBe('第一段\n第二行 & 更多\n第三段。');
   });
 
   it('空列表抛错', () => {

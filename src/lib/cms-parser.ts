@@ -76,6 +76,33 @@ export function extractM3u8FromText(text: string): string[] {
   return matches.map((link) => link.replace(/^\$/, ''));
 }
 
+/** 采集站简介通常是 HTML 片段；转成纯文本，保留段落分隔。 */
+export function cleanDescription(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const entities: Record<string, string> = {
+    amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+    mdash: '—', ndash: '–', hellip: '…', middot: '·', laquo: '«', raquo: '»',
+  };
+  const decoded = value.replace(/&(#(?:x[\da-f]+|\d+)|[a-z]+);/gi, (match, entity: string) => {
+    if (entity.startsWith('#')) {
+      const hex = entity[1]?.toLowerCase() === 'x';
+      const point = Number.parseInt(entity.slice(hex ? 2 : 1), hex ? 16 : 10);
+      return point > 0 && point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff)
+        ? String.fromCodePoint(point)
+        : match;
+    }
+    return entities[entity.toLowerCase()] ?? match;
+  });
+  return decoded
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+    .replace(/<\s*br\s*\/?\s*>|<\s*\/\s*(?:p|div|li|section|article|h[1-6])\s*>/gi, '\n')
+    .replace(/<\/?[a-z][^>]*>/gi, ' ')
+    .replace(/[\u00a0\u3000\t ]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim() || undefined;
+}
+
 /** 详情 JSON 响应 → 统一详情 */
 export function parseDetail(
   data: unknown,
@@ -95,7 +122,7 @@ export function parseDetail(
     videoInfo: {
       title: str(vod.vod_name),
       cover: str(vod.vod_pic),
-      desc: str(vod.vod_content),
+      desc: cleanDescription(vod.vod_content),
       typeName: str(vod.type_name),
       year: str(vod.vod_year),
       area: str(vod.vod_area),
@@ -142,7 +169,7 @@ export function parseDetailPageHtml(
     episodes,
     videoInfo: {
       title: titleMatch ? titleMatch[1].trim() : undefined,
-      desc: descMatch ? descMatch[1].replace(/<[^>]+>/g, ' ').trim() : undefined,
+      desc: cleanDescription(descMatch?.[1]),
       sourceKey: source.key,
       sourceName: source.name,
       sourceUrl: source.url,
