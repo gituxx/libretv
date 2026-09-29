@@ -19,6 +19,8 @@ PROTECTED = [
     'src/lib/client-api.ts',
     'src/lib/client-api.test.ts',
     'src/lib/switch-source-rank.ts',
+    'src/lib/switch-source-cache.ts',
+    'src/lib/switch-source-cache.test.ts',
     'src/app/api/auth/route.ts',
     'src/app/api/status/route.ts',
     'src/app/api/search/route.ts',

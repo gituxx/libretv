@@ -7,6 +7,7 @@ import { Header } from '@/components/header';
 import { RecommendSection } from '@/components/douban-section';
 import { DetailModal } from '@/components/detail-modal';
 import { AggregatedCard, aggregateResults } from '@/components/video-card';
+import { saveSwitchSourceResults } from '@/lib/switch-source-cache';
 import { useAppStore, resolveSource, isInDisabledSubscription } from '@/lib/store';
 import { api } from '@/lib/client-api';
 import type { SearchResultItem, SourceSearchOutcome } from '@/lib/types';
@@ -297,7 +298,10 @@ function HomeContent() {
                     <AggregatedCard
                       key={group.key}
                       group={group}
-                      onOpen={(item) => setDetailItem(item)}
+                      onOpen={(item) => {
+                        saveSwitchSourceResults(group.name, group.items);
+                        setDetailItem(item);
+                      }}
                     />
                   ))}
                 </div>

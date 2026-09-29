@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client-api';
 import type { SourceConfig, SearchResultItem } from '@/lib/types';
-import { buildWatchUrl, cn } from '@/lib/utils';
+import { buildWatchUrl, cn, validateSourceUrl } from '@/lib/utils';
 import { sortSwitchCandidates, type SwitchCandidate } from '@/lib/switch-source-rank';
-import { useAppStore, resolveSource } from '@/lib/store';
+import { readSwitchSourceResults } from '@/lib/switch-source-cache';
+import { useAppStore, resolveSource, isInDisabledSubscription } from '@/lib/store';
 import { useToast } from './toast';
 import { Icon } from './icon';
 import { SmartImage } from './smart-image';
@@ -35,13 +36,14 @@ export function useSwitchSourceProbe({ currentTitle, currentSource, currentVodId
   const sources = useMemo(() => {
     const seen = new Set<string>();
     return store.selectedKeys.map((key) => resolveSource(store, key)).filter((s): s is SourceConfig => {
-      if (!s || seen.has(s.key)) return false;
+      if (!s || !validateSourceUrl(s.url) || seen.has(s.key)
+        || isInDisabledSubscription(store, s.key)) return false;
       seen.add(s.key);
       return true;
     });
     // Health updates do not restart a running search.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.selectedKeys, store.customAPIs, store.envSources]);
+  }, [store.selectedKeys, store.customAPIs, store.envSources, store.subscriptions]);
   const [candidates, setCandidates] = useState<SwitchCandidate[]>([]);
   const [progress, setProgress] = useState<ProbeProgress>({ searched: 0, total: 0, tested: 0, done: false });
 
@@ -50,6 +52,7 @@ export function useSwitchSourceProbe({ currentTitle, currentSource, currentVodId
     const controller = new AbortController();
     const sourceByKey = new Map(sources.map((source) => [source.key, source]));
     const seen = new Set<string>();
+    const searchedKeys = new Set<string>();
     const queue: SwitchCandidate[] = [];
     let active = 0;
     let searchedAll = false;
@@ -61,8 +64,21 @@ export function useSwitchSourceProbe({ currentTitle, currentSource, currentVodId
         vodId: currentVodId, name: currentTitle, pic: currentCover },
       episodes: currentEpisodes,
     };
+    const seeded = [initial];
     seen.add(candidateKey(initial));
-    setCandidates([initial]);
+    for (const item of readSwitchSourceResults(currentTitle)) {
+      const source = sourceByKey.get(item.sourceKey);
+      if (!source) continue;
+      const candidate: SwitchCandidate = { source, result: item };
+      const key = candidateKey(candidate);
+      if (seen.has(key)) {
+        if (key === candidateKey(initial)) initial.result = { ...initial.result, ...item };
+        continue;
+      }
+      seen.add(key);
+      seeded.push(candidate);
+    }
+    setCandidates(seeded);
     setProgress({ searched: 0, total: sources.length, tested: 0, done: false });
 
     const finish = () => {
@@ -89,12 +105,15 @@ export function useSwitchSourceProbe({ currentTitle, currentSource, currentVodId
         });
       }
     };
-    queue.push(initial);
+    queue.push(...seeded);
     pump();
 
     const addOutcome = (sourceKey: string, list: SearchResultItem[]) => {
       if (controller.signal.aborted) return;
-      setProgress((p) => ({ ...p, searched: Math.min(p.searched + 1, p.total) }));
+      if (!searchedKeys.has(sourceKey)) {
+        searchedKeys.add(sourceKey);
+        setProgress((p) => ({ ...p, searched: searchedKeys.size }));
+      }
       const source = sourceByKey.get(sourceKey);
       if (!source) return;
       const title = currentTitle.trim();
@@ -115,12 +134,24 @@ export function useSwitchSourceProbe({ currentTitle, currentSource, currentVodId
       pump();
     };
 
-    void api.search(currentTitle, sources, store.yellowFilter, {
+    const search = (batch: SourceConfig[]) => api.search(currentTitle, batch, store.yellowFilter, {
       signal: controller.signal,
       onSource: (outcome) => addOutcome(outcome.sourceKey, outcome.list),
-    }).catch(() => {
-      // Keep partial results if a batch or connection fails.
-    }).finally(() => {
+    });
+    void (async () => {
+      try {
+        const first = await search(sources);
+        if (controller.signal.aborted) return;
+        const failedKeys = new Set(first.failures.map((failure) => failure.sourceKey));
+        const failedSources = sources.filter((source) => failedKeys.has(source.key));
+        if (failedSources.length) await search(failedSources);
+      } catch {
+        // If the whole request fails, make one more attempt. Cached results stay visible.
+        if (!controller.signal.aborted) {
+          try { await search(sources); } catch { /* retain the available candidates */ }
+        }
+      }
+    })().finally(() => {
       searchedAll = true;
       finish();
     });
