@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { api } from '@/lib/client-api';
 // 播放器（artplayer + hls.js）按需加载：拆出独立 chunk，不占首屏 First Load JS
 const PlayerShell = dynamic(() => import('@/components/player-shell').then((m) => m.PlayerShell), {
@@ -28,6 +29,7 @@ import {
   saveProgress,
   updateHistoryProgress,
   upsertHistory,
+  toggleFavorite,
   db,
 } from '@/lib/db';
 import { cn } from '@/lib/utils';
@@ -76,6 +78,11 @@ function WatchContent() {
   const episodes = useMemo(() => detailQuery.data?.episodes ?? [], [detailQuery.data]);
   const videoTitle = titleParam || detailQuery.data?.videoInfo?.title || '未知视频';
   const { toast } = useToast();
+  const favoriteId = sourceKey && vodId ? `${sourceKey}_${vodId}` : '';
+  const isFavorite = useLiveQuery(
+    () => favoriteId ? db.favorites.get(favoriteId) : Promise.resolve(undefined),
+    [favoriteId]
+  );
 
   // 当前播放地址：优先取剧集列表中的当前集，其次直连 URL 参数
   const currentUrl = useMemo(() => {
@@ -218,25 +225,6 @@ function WatchContent() {
               {episodes.length > 0 && ` · 第 ${currentIndex + 1}/${episodes.length} 集`}
             </p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              className="btn-ghost btn-sm"
-              onClick={() => {
-                if (!currentUrl) return;
-                enqueueDownload({
-                  url: currentUrl,
-                  title: `${videoTitle}${episodes.length > 0 ? ` 第${currentIndex + 1}集` : ''}`,
-                  format: 'MP4',
-                });
-                toast('已加入下载队列', 'success');
-              }}
-            >
-              下载本集
-            </button>
-            <button className="btn-source btn-sm" onClick={() => setSwitchOpen(true)}>
-              切换资源
-            </button>
-          </div>
         </div>
       </header>
 
@@ -287,6 +275,24 @@ function WatchContent() {
               >
                 下一集
               </button>
+              <button
+                className="btn-ghost btn-sm"
+                disabled={!currentUrl}
+                onClick={() => {
+                  if (!currentUrl) return;
+                  enqueueDownload({
+                    url: currentUrl,
+                    title: `${videoTitle}${episodes.length > 0 ? ` 第${currentIndex + 1}集` : ''}`,
+                    format: 'MP4',
+                  });
+                  toast('已加入下载队列', 'success');
+                }}
+              >
+                下载本集
+              </button>
+              <button className="btn-source btn-sm" onClick={() => setSwitchOpen(true)}>
+                切换资源
+              </button>
               <label className="flex items-center gap-1.5 text-xs text-muted ml-auto cursor-pointer">
                 <input
                   type="checkbox"
@@ -297,6 +303,41 @@ function WatchContent() {
                 自动连播
               </label>
             </div>
+
+            {detailQuery.data?.videoInfo && (
+              <section className="mt-4 rounded-lg border border-line bg-surface-raised p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-content">{detailQuery.data.videoInfo.title || videoTitle}</h2>
+                    <p className="mt-1 text-xs text-muted">
+                      {[detailQuery.data.videoInfo.year, detailQuery.data.videoInfo.area, detailQuery.data.videoInfo.typeName, detailQuery.data.videoInfo.director]
+                        .filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <button
+                    className={cn('btn-sm shrink-0', isFavorite ? 'btn-source' : 'btn-ghost')}
+                    onClick={async () => {
+                      const added = await toggleFavorite({
+                        sourceKey,
+                        sourceUrl: source.url,
+                        vodId,
+                        title: videoTitle,
+                        pic: detailQuery.data?.videoInfo?.cover,
+                      });
+                      toast(added ? '已加入收藏' : '已取消收藏', 'success');
+                    }}
+                    aria-pressed={Boolean(isFavorite)}
+                  >
+                    <span aria-hidden>{isFavorite ? '★' : '☆'}</span> {isFavorite ? '已收藏' : '收藏'}
+                  </button>
+                </div>
+                {detailQuery.data.videoInfo.desc && (
+                  <p className="mt-3 text-sm leading-6 text-muted whitespace-pre-line break-words">
+                    {detailQuery.data.videoInfo.desc}
+                  </p>
+                )}
+              </section>
+            )}
           </div>
 
           {/* 剧集侧栏 */}

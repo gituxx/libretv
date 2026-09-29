@@ -5,14 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Header } from '@/components/header';
 import { RecommendSection } from '@/components/douban-section';
-import { DetailModal } from '@/components/detail-modal';
 import { AggregatedCard, aggregateResults } from '@/components/video-card';
 import { saveSwitchSourceResults } from '@/lib/switch-source-cache';
 import { useAppStore, resolveSource, isInDisabledSubscription } from '@/lib/store';
 import { api } from '@/lib/client-api';
-import type { SearchResultItem, SourceSearchOutcome } from '@/lib/types';
+import type { SourceSearchOutcome } from '@/lib/types';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search-history';
-import { cn, validateSourceUrl } from '@/lib/utils';
+import { buildWatchUrl, cn, validateSourceUrl } from '@/lib/utils';
+import { db } from '@/lib/db';
 import { useToast } from '@/components/toast';
 import { EmptyState } from '@/components/states';
 import { Icon } from '@/components/icon';
@@ -46,7 +46,6 @@ function HomeContent() {
   const yellowFilter = useAppStore((s) => s.yellowFilter);
   const subscriptions = useAppStore((s) => s.subscriptions);
   const [input, setInput] = useState(urlQuery);
-  const [detailItem, setDetailItem] = useState<SearchResultItem | null>(null);
   /** 流式搜索中已结算的源（data 就绪前用于增量渲染） */
   const [streamedOutcomes, setStreamedOutcomes] = useState<SourceSearchOutcome[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -298,9 +297,16 @@ function HomeContent() {
                     <AggregatedCard
                       key={group.key}
                       group={group}
-                      onOpen={(item) => {
+                      onOpen={async (item) => {
                         saveSwitchSourceResults(group.name, group.items);
-                        setDetailItem(item);
+                        const history = await db.history.get(`${item.sourceKey}_${item.vodId}`).catch(() => undefined);
+                        router.push(buildWatchUrl({
+                          sourceKey: item.sourceKey,
+                          vodId: item.vodId,
+                          index: history?.episodeIndex ?? 0,
+                          title: item.name,
+                          sourceUrl: item.sourceUrl,
+                        }));
                       }}
                     />
                   ))}
@@ -342,7 +348,6 @@ function HomeContent() {
 
       <SiteFooter />
 
-      <DetailModal item={detailItem} onClose={() => setDetailItem(null)} />
     </div>
   );
 }

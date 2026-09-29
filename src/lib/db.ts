@@ -28,6 +28,16 @@ export interface HistoryEntry {
   timestamp: number;
 }
 
+export interface FavoriteEntry {
+  id: string;
+  sourceKey: string;
+  sourceUrl?: string;
+  vodId: string;
+  title: string;
+  pic?: string;
+  timestamp: number;
+}
+
 export interface ProgressEntry {
   key: string; // `${sourceKey}_${vodId}_${episodeIndex}`
   position: number;
@@ -77,6 +87,7 @@ export const db = new Dexie('libretv') as Dexie & {
   liveProbe: EntityTable<LiveProbeEntry & { url: string }, 'url'>;
   segmentMeta: EntityTable<SegmentMetaEntry, 'key'>;
   downloads: EntityTable<DownloadTaskEntry, 'id'>;
+  favorites: EntityTable<FavoriteEntry, 'id'>;
 };
 
 db.version(1).stores({
@@ -96,8 +107,28 @@ db.version(3).stores({
   downloads: 'id, createdAt',
 });
 
+db.version(4).stores({
+  favorites: 'id, timestamp, title',
+});
+
 export const MAX_HISTORY = 100;
 export const MAX_SEARCH_HISTORY = 10;
+
+export async function toggleFavorite(
+  entry: Omit<FavoriteEntry, 'id' | 'timestamp'>
+): Promise<boolean> {
+  const id = `${entry.sourceKey}_${entry.vodId}`;
+  if (await db.favorites.get(id)) {
+    await db.favorites.delete(id);
+    return false;
+  }
+  await db.favorites.put({ ...entry, id, timestamp: Date.now() });
+  return true;
+}
+
+export async function removeFavorite(id: string): Promise<void> {
+  await db.favorites.delete(id);
+}
 
 export async function upsertHistory(entry: Omit<HistoryEntry, 'id'>): Promise<void> {
   const id = `${entry.sourceKey}_${entry.vodId}`;
