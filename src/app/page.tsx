@@ -139,10 +139,10 @@ function HomeContent() {
   // 跨源同名聚合：同名影片合并为一张卡片，展开后可选择具体来源
   const groups = useMemo(() => aggregateResults(list), [list]);
 
-  // 分批渲染：新一次搜索（groups 变化）时重置回首批
+  // 分批渲染：仅在关键词变化时重置；逐源结果更新不收回已加载的卡片。
   const [visibleCount, setVisibleCount] = useState(RESULT_PAGE_SIZE);
   const visibleGroups = useMemo(() => groups.slice(0, visibleCount), [groups, visibleCount]);
-  useEffect(() => setVisibleCount(RESULT_PAGE_SIZE), [groups]);
+  useEffect(() => setVisibleCount(RESULT_PAGE_SIZE), [urlQuery]);
 
   return (
     <div className="min-h-screen flex flex-col">

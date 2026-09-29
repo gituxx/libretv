@@ -20,7 +20,9 @@ export interface AggregatedGroup {
 
 function buildGroup(name: string, year: string | undefined, items: SearchResultItem[]): AggregatedGroup {
   return {
-    key: `${name}|${year ?? ''}|${items.map((i) => `${i.sourceKey}_${i.vodId}`).join(',')}`,
+    // Search results arrive incrementally. The React key must not change when
+    // another source joins this title, or an open source menu gets remounted.
+    key: JSON.stringify([name, year ?? null]),
     name,
     year,
     typeName: items.find((i) => i.typeName)?.typeName,

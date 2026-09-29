@@ -25,6 +25,8 @@ PROTECTED = [
     'src/app/page.tsx',
     'src/components/auth.tsx',
     'src/components/source-manager.tsx',
+    'src/components/video-card.tsx',
+    'src/components/video-card.test.ts',
     'src/components/settings-shared.tsx',
     'src/lib/store.ts',
     'src/lib/store.test.ts',
