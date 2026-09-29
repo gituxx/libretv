@@ -11,6 +11,7 @@
     "DEFAULT_SUBSCRIPTIONS": "[\"https://tvbox.oinnn.top/tvbox.json\"]",
     "DEFAULT_LIVE_SOURCES": "[{\"name\":\"每日直播源\",\"url\":\"https://tvbox.oinnn.top/live.m3u\"}]",
     "COOKIE_SECURE": "true",
-    "PUBLIC_ACCESS": "true"
+    "PUBLIC_ACCESS": "true",
+    "DEFAULT_RECOMMEND_SOURCE": "douban"
   }
 }

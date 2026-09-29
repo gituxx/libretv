@@ -43,6 +43,7 @@ jobs:
           DEFAULT_LIVE_SOURCES: '[{"name":"每日直播源","url":"https://tvbox.oinnn.top/live.m3u"}]'
           COOKIE_SECURE: 'true'
           PUBLIC_ACCESS: 'true'
+          DEFAULT_RECOMMEND_SOURCE: 'douban'
       - name: Publish upstream merge
         if: github.event_name != 'push'
         run: |

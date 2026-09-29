@@ -27,6 +27,7 @@ PROTECTED = [
     'src/app/api/search/route.test.ts',
     'src/app/page.tsx',
     'src/app/watch/page.tsx',
+    'src/app/globals.css',
     'src/components/auth.tsx',
     'src/components/source-manager.tsx',
     'src/components/video-card.tsx',

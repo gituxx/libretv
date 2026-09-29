@@ -233,7 +233,7 @@ function WatchContent() {
             >
               下载本集
             </button>
-            <button className="btn-ghost btn-sm" onClick={() => setSwitchOpen(true)}>
+            <button className="btn-source btn-sm" onClick={() => setSwitchOpen(true)}>
               切换资源
             </button>
           </div>
