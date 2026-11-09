@@ -54,6 +54,8 @@ docker compose up -d --build
 
 ## Cloudflare Workers
 
+也可以在飞牛 NAS 上运行 Docker，并通过 Cloudflare Tunnel 提供独立公网入口，详见 [NAS 部署说明](deploy/nas/README.md)。
+
 线上使用 [OpenNext Cloudflare](https://opennext.js.org/cloudflare) 适配 Next.js，配置见 [wrangler.jsonc](wrangler.jsonc) 和 [open-next.config.ts](open-next.config.ts)。
 
 部署自己的实例：

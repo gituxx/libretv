@@ -1,0 +1,54 @@
+services:
+  libretv:
+    image: libretv-nas:current
+    pull_policy: never
+    container_name: libretv-nas
+    restart: unless-stopped
+    ports:
+      - "${LIBRETV_PORT:-18080}:8080"
+    env_file: .env
+    environment:
+      NODE_OPTIONS: --max-old-space-size=512
+    mem_limit: 768m
+    cpus: 2
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/api/status',{signal:AbortSignal.timeout(4000)}).then(r=>r.json()).then(s=>process.exit(s.verified&&!s.passwordRequired?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+      start_interval: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  cloudflared:
+    image: libretv-nas-tunnel:current
+    pull_policy: never
+    container_name: libretv-nas-tunnel
+    restart: unless-stopped
+    depends_on:
+      libretv:
+        condition: service_healthy
+    user: "${NAS_UID:-1000}:${NAS_GID:-1001}"
+    command: [tunnel, --no-autoupdate, --protocol, http2, run, --token-file, /run/secrets/tunnel-token]
+    environment:
+      TUNNEL_METRICS: 0.0.0.0:2000
+    volumes:
+      - ./.secrets/tunnel-token:/run/secrets/tunnel-token:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
