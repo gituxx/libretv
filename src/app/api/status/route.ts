@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isPasswordConfigured, isPublicAccess, sessionFromCookieHeader } from '@/lib/auth';
+import { isPublicAccess, sessionFromCookieHeader } from '@/lib/auth';
 import { getEnvSources } from '@/lib/env-sources';
 import { getEnvLiveSources } from '@/lib/env-live-sources';
 import { getEnvSubscriptions } from '@/lib/env-subscriptions';
@@ -8,10 +8,10 @@ import { getEnvImageMode } from '@/lib/env-image-mode';
 
 export const runtime = 'nodejs';
 
-/** 站点状态：客户端据此决定是否弹出登录框 / 提示管理员配置密码，并获取预置采集站与预置直播源 */
+/** 站点状态：公开站点无需登录，并下发预置采集站与直播源。 */
 export async function GET(req: Request) {
-  const passwordRequired = !isPublicAccess() && isPasswordConfigured();
-  const verified = isPublicAccess() || (passwordRequired && sessionFromCookieHeader(req.headers.get('cookie')));
+  const passwordRequired = !isPublicAccess();
+  const verified = !passwordRequired || sessionFromCookieHeader(req.headers.get('cookie'));
   return NextResponse.json({
     passwordRequired,
     verified,

@@ -20,9 +20,9 @@ export function isPasswordConfigured(): boolean {
   return getPassword().length > 0;
 }
 
-/** Explicit public deployment mode; an old PASSWORD secret must not lock visitors out. */
+/** No password means public access; explicit public mode also ignores an old password. */
 export function isPublicAccess(): boolean {
-  return process.env.PUBLIC_ACCESS === 'true';
+  return process.env.PUBLIC_ACCESS === 'true' || !isPasswordConfigured();
 }
 
 function getSecret(): string {

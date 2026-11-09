@@ -1,16 +1,10 @@
 import { NextResponse } from 'next/server';
-import { SESSION_COOKIE, checkRateLimit, sessionFromCookieHeader, signSession, checkPassword, clearRateLimit, isPasswordConfigured, isPublicAccess } from '@/lib/auth';
+import { SESSION_COOKIE, checkRateLimit, sessionFromCookieHeader, signSession, checkPassword, clearRateLimit, isPublicAccess } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   if (isPublicAccess()) return NextResponse.json({ success: true });
-  if (!isPasswordConfigured()) {
-    return NextResponse.json(
-      { success: false, error: '服务器未设置 PASSWORD 环境变量，请联系管理员配置' },
-      { status: 503 }
-    );
-  }
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
   if (!checkRateLimit(ip)) {

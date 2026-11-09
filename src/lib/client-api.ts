@@ -49,15 +49,11 @@ export function onUnauthorized(handler: (event: CustomEvent) => void): () => voi
   return () => window.removeEventListener(UNAUTHORIZED_EVENT, wrapped);
 }
 
-/** 401/503 统一处理：分发全局事件打开登录框并抛 ApiError（普通与流式请求共用） */
+/** 只有 401 需要登录；503 等服务错误不能撤销访问状态或弹出密码框。 */
 function throwForAuthStatus(res: Response): void {
   if (res.status === 401) {
     window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
     throw new ApiError('需要登录', 401);
-  }
-  if (res.status === 503) {
-    window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT, { detail: 'setup' }));
-    throw new ApiError('服务器未配置密码', 503);
   }
 }
 
@@ -154,7 +150,7 @@ export const api = {
               // 流中断时回退普通 JSON 请求，避免整批源被误报为搜索失败。
               if (
                 signal?.aborted ||
-                (streamError instanceof ApiError && [401, 503].includes(streamError.status))
+                (streamError instanceof ApiError && streamError.status === 401)
               ) throw streamError;
               const response = await request<SearchResponse>('/api/search', {
                 method: 'POST',
@@ -184,7 +180,7 @@ export const api = {
             });
           }
         } catch (error) {
-          if (signal?.aborted || (error instanceof ApiError && [401, 503].includes(error.status))) throw error;
+          if (signal?.aborted || (error instanceof ApiError && error.status === 401)) throw error;
           const message = error instanceof Error ? error.message : '请求失败';
           responses[i] = { list: [], failures: batch.map((s) => ({ sourceKey: s.key, error: message })) };
           for (const source of batch) {

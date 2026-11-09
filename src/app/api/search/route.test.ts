@@ -131,16 +131,26 @@ describe('POST /api/search', () => {
     expect(lines[lines.length - 1].type).toBe('done');
   });
 
-  it('未登录返回 401，未配置密码返回 503', async () => {
-    vi.stubGlobal('fetch', vi.fn());
-    const saved = process.env.PASSWORD;
-    delete process.env.PASSWORD;
+  it('未设置密码时允许匿名搜索', async () => {
+    mockUpstream();
+    vi.stubEnv('PASSWORD', undefined);
+    vi.stubEnv('PUBLIC_ACCESS', undefined);
     try {
-      const noPassword = await POST(makeRequest({ wd: 'x', sources: SOURCES }));
-      expect(noPassword.status).toBe(503);
+      const noCookie = new Request('https://local.test/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wd: '匿名搜索', sources: [SOURCES[0]] }),
+      });
+      const response = await POST(noCookie);
+      expect(response.status).toBe(200);
+      expect((await response.json()).list.length).toBeGreaterThan(0);
     } finally {
-      process.env.PASSWORD = saved;
+      vi.unstubAllEnvs();
     }
+  });
+
+  it('主动设置密码后未登录返回 401', async () => {
+    vi.stubGlobal('fetch', vi.fn());
     const noCookie = new Request('https://local.test/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
